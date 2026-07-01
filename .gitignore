@@ -1,0 +1,38 @@
+# Python cache/build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local configuration with real target coordinates/project names
+config.py
+
+# Runtime checkpoints and scraped/exported data
+checkpoints/
+*.xlsx
+*.xls
+*.csv
+*.jsonl
+
+# Local diagnostics and assistant/editor state
+debug.py
+check_page.py
+.claude/
+.codex/
+.agents/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Backups generated during local work
+数据备份/
