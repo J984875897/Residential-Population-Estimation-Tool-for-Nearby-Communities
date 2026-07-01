@@ -1,33 +1,46 @@
-# 贝壳周边小区人口估算爬虫
+# 周边小区居住人口估算工具
 
-一个用于估算目标地点周边小区居住人口的 Python 小工具。程序会从贝壳找房小区页面抓取小区 URL、楼栋数、总户数、坐标和户型分布，按目标坐标和搜索半径筛选小区，最后导出 Excel 结果。
+# Residential Population Estimation Tool for Nearby Communities
 
-## 功能特点
+## 一、项目简介 / Overview
 
-- 支持 GUI 和命令行两种运行方式
-- 支持按城市代码和行政区配置抓取范围
-- 使用列表页坐标做预筛选，减少详情页请求量
-- 支持断点文件，运行中断后可继续
-- 支持重新运行 Step 3，便于修改半径、坐标或公式后快速重算
-- 自动生成 Excel，并标记范围外小区和默认平均室数
+本项目是一个基于 Python 的周边小区居住人口估算工具。程序以指定目标地点为中心，按城市、行政区和搜索半径采集贝壳找房小区公开页面中的基础信息，并结合空间距离筛选与人口估算模型，生成结构化 Excel 结果，便于开展周边居住人口规模分析。
 
-## 项目结构
+This project is a Python-based tool for estimating the residential population around a target location. It collects publicly available community-level information from Beike, filters communities by geographic distance, applies a configurable population estimation model, and exports structured results to Excel for further analysis.
+
+## 二、功能概述 / Features
+
+- 支持图形界面和命令行两种运行方式。  
+  Supports both graphical user interface and command-line execution.
+- 支持按城市代码、行政区和目标半径配置抓取范围。  
+  Allows users to configure the search scope by city code, districts, and radius.
+- 支持从列表页坐标进行预筛选，减少详情页访问次数。  
+  Uses list-page coordinates for preliminary filtering to reduce detail-page requests.
+- 支持断点续跑，运行中断后可继续执行已保存进度。  
+  Supports checkpoint-based resume after interruptions.
+- 支持单独重算结果，便于修改半径、坐标或估算参数后快速生成新表。  
+  Allows recalculation without re-crawling when radius, coordinates, or model parameters change.
+- 支持导出 Excel，包含小区名称、距离、户数、平均室数、估算人口和数据来源链接。  
+  Exports results to Excel, including community name, distance, household count, average room count, estimated population, and source link.
+
+## 三、项目结构 / Project Structure
 
 ```text
-.
-├── main.py              # 主流程入口，包含三步爬取和 Excel 输出
-├── gui.py               # tkinter 图形界面
-├── scraper.py           # Selenium 抓取逻辑
-├── calculator.py        # 平均室数和人口估算公式
-├── distance.py          # Haversine 距离计算
-├── config.example.py    # 示例配置文件
-├── requirements.txt     # Python 依赖
+├── main.py              # 主流程入口 / Main workflow and Excel output
+├── gui.py               # 图形界面 / Tkinter GUI
+├── scraper.py           # 爬取逻辑 / Selenium scraping logic
+├── calculator.py        # 估算公式 / Average room and population calculation
+├── distance.py          # 距离计算 / Haversine distance calculation
+├── config.example.py    # 示例配置 / Example configuration
+├── requirements.txt     # Python 依赖 / Python dependencies
 └── README.md
 ```
 
-## 安装
+## 四、环境安装 / Installation
 
 建议使用虚拟环境：
+
+It is recommended to use a virtual environment:
 
 ```bash
 python3 -m venv .venv
@@ -37,9 +50,13 @@ pip install -r requirements.txt
 
 首次运行 Selenium 时，`webdriver-manager` 会自动下载匹配的 ChromeDriver。请确保本机已安装 Chrome。
 
-## 配置
+When Selenium runs for the first time, `webdriver-manager` will automatically download the matching ChromeDriver. Please make sure Google Chrome is installed locally.
+
+## 五、参数配置 / Configuration
 
 复制示例配置：
+
+Copy the example configuration file:
 
 ```bash
 cp config.example.py config.py
@@ -47,18 +64,32 @@ cp config.example.py config.py
 
 然后编辑 `config.py`：
 
-- `CITY_CODE`：贝壳城市代码，例如兰州为 `lz`
-- `CITY_NAME`：城市中文名
-- `TARGET_LNG` / `TARGET_LAT`：目标地点经纬度
-- `TARGET_NAME`：目标地点名称
-- `RADIUS_KM`：搜索半径，单位公里
-- `SEARCH_DISTRICTS`：行政区拼音列表
+Then edit `config.py`:
 
-`config.py` 默认不会提交到 GitHub，避免公开真实项目名称、坐标或客户信息。
+- `CITY_CODE`：贝壳城市代码，例如兰州为 `lz`。  
+  Beike city code, for example `lz` for Lanzhou.
+- `CITY_NAME`：城市中文名，用于日志和输出文件。  
+  City name used in logs and output files.
+- `TARGET_LNG` / `TARGET_LAT`：目标地点经纬度。  
+  Longitude and latitude of the target location.
+- `TARGET_NAME`：目标地点名称。  
+  Name of the target location.
+- `RADIUS_KM`：搜索半径，单位为公里。  
+  Search radius in kilometers.
+- `SEARCH_DISTRICTS`：行政区拼音列表。  
+  List of district slugs used by Beike URLs.
+- `DEFAULT_B`：缺少户型分布时使用的默认平均室数。  
+  Default average room count when room distribution data is unavailable.
+- `PEOPLE_PER_ROOM`：每室平均居住人数。  
+  Average number of residents per room.
+- `OCCUPANCY_RATE`：入住率修正系数。  
+  Occupancy-rate adjustment factor.
 
-## 运行
+## 六、运行方式 / Usage
 
-GUI 模式：
+图形界面模式：
+
+Run with GUI:
 
 ```bash
 python main.py
@@ -66,11 +97,15 @@ python main.py
 
 命令行模式：
 
+Run in command-line mode:
+
 ```bash
 python main.py --cli
 ```
 
 测试模式，仅抓取一个小区并打印结果：
+
+Test mode, which crawls one community and prints the result:
 
 ```bash
 python main.py --test
@@ -78,50 +113,78 @@ python main.py --test
 
 清除断点：
 
+Clear checkpoints:
+
 ```bash
 python main.py --reset
 ```
 
-## 输出
+## 七、输出结果 / Output
 
-程序会生成一个 Excel 文件，文件名类似：
+程序会生成一个 Excel 文件，文件名格式如下：
+
+The program generates an Excel file with the following naming format:
 
 ```text
 目标地点_人口估算结果.xlsx
 ```
 
-输出表包含小区名称、距离、是否在搜索半径内、楼栋数、总户数、平均室数、估算人口和贝壳链接。
+输出表包含小区名称、距离、是否在搜索半径内、楼栋数、总户数、平均室数、估算人口和贝壳链接。范围外的小区会在表格中保留并灰显，便于核查筛选边界。
 
-## 隐私与上传注意事项
+The output table includes community name, distance, whether it is within the configured radius, building count, household count, average room count, estimated population, and Beike source link. Communities outside the radius are retained and greyed out for boundary review.
 
-上传到公开 GitHub 前，请不要提交以下内容：
+## 八、估算方法 / Estimation Method
 
-- `config.py`：可能包含真实目标地点、坐标和项目名称
-- `checkpoints/`：断点文件，包含已抓取的小区链接和详情数据
-- `*.xlsx` / `*.csv`：导出的分析结果
-- `.claude/`、`.vscode/`、`__pycache__/`、`.DS_Store` 等本地环境文件
-- 调试脚本运行输出，尤其是包含 Cookie 片段、页面内容或本地路径的日志
+人口估算公式如下：
 
-本项目根目录 `.gitignore` 已默认排除这些文件。提交前仍建议运行：
-
-```bash
-git status --short
-git diff --cached --name-only
-```
-
-确认待提交文件中没有隐私数据后再 push。
-
-## 人口估算公式
+The population estimation formula is:
 
 ```text
 P = a * b * PEOPLE_PER_ROOM * OCCUPANCY_RATE
 ```
 
-- `a`：小区总户数
-- `b`：加权平均室数；若页面无户型分布，则使用 `DEFAULT_B`
-- `PEOPLE_PER_ROOM`：每室平均居住人数
-- `OCCUPANCY_RATE`：入住率修正
+其中：
 
-## 免责声明
+Where:
 
-本项目仅用于学习和内部分析。请遵守目标网站的服务条款和 robots 规则，合理设置请求间隔，不要进行高频或商业化爬取。
+- `P`：估算居住人口。  
+  Estimated residential population.
+- `a`：小区总户数。  
+  Total household count of the community.
+- `b`：加权平均室数；若页面无户型分布，则使用 `DEFAULT_B`。  
+  Weighted average room count; `DEFAULT_B` is used when room distribution data is unavailable.
+- `PEOPLE_PER_ROOM`：每室平均居住人数。  
+  Average number of residents per room.
+- `OCCUPANCY_RATE`：入住率修正系数。  
+  Occupancy-rate adjustment factor.
+
+小区与目标地点之间的距离采用 Haversine 公式计算。程序会根据配置半径筛选参与汇总的小区，并在 Excel 中保留完整计算结果。
+
+The distance between each community and the target location is calculated using the Haversine formula. The program filters communities according to the configured radius and keeps the full calculation results in the Excel output.
+
+## 九、流程说明 / Workflow
+
+程序主流程分为三个阶段：
+
+The main workflow consists of three steps:
+
+```text
+Step 1：按行政区抓取小区列表，并使用列表页坐标进行初步筛选
+        Crawl community lists by district and apply preliminary filtering using list-page coordinates
+
+Step 2：访问小区详情页，提取楼栋数、总户数、坐标和户型分布
+        Visit detail pages and extract building count, household count, coordinates, and room distribution
+
+Step 3：计算距离和估算人口，生成 Excel 汇总结果
+        Calculate distances, estimate population, and generate the Excel summary
+```
+
+断点文件会保存在 `checkpoints/` 目录中。如果前两步已经完成，可以直接重新执行 Step 3，用于快速测试不同半径或估算参数下的结果变化。
+
+Checkpoint files are stored in the `checkpoints/` directory. If Step 1 and Step 2 have already been completed, Step 3 can be rerun directly to quickly test different radii or estimation parameters.
+
+## 十、使用说明 / Notes
+
+本项目适用于学习、研究和内部分析场景。使用时应合理设置请求间隔，遵守目标网站的服务条款和 robots 规则，避免高频访问或对目标网站造成额外负担。
+
+This project is intended for learning, research, and internal analysis. Please use reasonable request intervals, comply with the target website's terms of service and robots rules, and avoid high-frequency access that may cause unnecessary load.
