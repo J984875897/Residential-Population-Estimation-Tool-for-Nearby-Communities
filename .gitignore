@@ -30,6 +30,7 @@ check_page.py
 .claude/
 .codex/
 .agents/
+docs/superpowers/
 .vscode/
 
 # macOS
