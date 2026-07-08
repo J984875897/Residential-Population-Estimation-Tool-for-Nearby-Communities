@@ -18,6 +18,7 @@ config.py
 
 # Runtime checkpoints and scraped/exported data
 checkpoints/
+last_run_config.json
 *.xlsx
 *.xls
 *.csv

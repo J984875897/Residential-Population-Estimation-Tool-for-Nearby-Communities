@@ -6,11 +6,12 @@ GUI 界面，使用内置 tkinter，无需额外安装。
 
 import re
 import tkinter as tk
-from tkinter import scrolledtext, messagebox, ttk
+from tkinter import filedialog, scrolledtext, messagebox, ttk
 import threading
 import queue
 
 import config
+import runtime_state
 
 
 class ScraperGUI:
@@ -24,6 +25,10 @@ class ScraperGUI:
         self._choice_result = None
         self._scraper_main_fn = None
 
+        saved_state = runtime_state.load_state()
+        if saved_state:
+            runtime_state.apply_state_to_config(config, saved_state)
+
         # ── config 绑定变量 ──
         self._var_city_code = tk.StringVar(value=config.CITY_CODE)
         self._var_city_name = tk.StringVar(value=config.CITY_NAME)
@@ -32,8 +37,12 @@ class ScraperGUI:
         self._var_lat = tk.StringVar(value=str(config.TARGET_LAT))
         self._var_radius = tk.StringVar(value=str(config.RADIUS_KM))
         self._var_districts = tk.StringVar(value=", ".join(config.SEARCH_DISTRICTS))
-        self._var_limit = tk.StringVar(value="")
+        self._var_limit = tk.StringVar(value=str(saved_state.get("max_communities") or ""))
+        self._var_data_dir = tk.StringVar(
+            value=runtime_state.get_saved_data_dir(runtime_state.DEFAULT_DATA_DIR)
+        )
         self._max_communities = None
+        self._data_dir = self._var_data_dir.get()
 
         self._build_config_window()
 
@@ -42,7 +51,7 @@ class ScraperGUI:
     # ══════════════════════════════════════════
 
     def _build_config_window(self):
-        self.root.geometry("560x600")
+        self.root.geometry("620x660")
 
         # ── 标题栏：create_rectangle 绘制蓝色背景（绕过 Aqua 主题颜色限制）──
         tc = tk.Canvas(self.root, height=50, highlightthickness=0, bd=0)
@@ -58,7 +67,7 @@ class ScraperGUI:
         fc.pack(fill=tk.BOTH, expand=True)
 
         LX = 22   # 标签起始 x
-        EX = 182  # 输入框起始 x（anchor="w"）
+        EX = 190  # 输入框起始 x（anchor="w"）
         EW = 25   # 输入框字符宽度
 
         # (y坐标, 标签文字, 变量, 提示文字)
@@ -105,9 +114,26 @@ class ScraperGUI:
         fc.create_text(EX, 346, text="留空则爬取全部；仅从头爬取（Step 1/2）时生效",
                        fill="#888888", font=("Helvetica", 9), anchor="w")
 
+        # 数据保存文件夹
+        fc.create_text(LX, 382, text="数据保存文件夹",
+                       fill="#1a2a4a", font=("Helvetica", 11), anchor="w")
+        de = tk.Entry(fc, textvariable=self._var_data_dir, width=EW,
+                      font=("Helvetica", 10))
+        fc.create_window(EX, 382, window=de, anchor="w", height=26)
+        pick_btn = tk.Button(
+            fc, text="选择...",
+            command=self._on_select_data_dir,
+            bg="#5a7db5", fg="#1a2a4a",
+            font=("Helvetica", 9),
+            relief=tk.FLAT, padx=6, pady=2,
+        )
+        fc.create_window(EX + 232, 382, window=pick_btn, anchor="w")
+        fc.create_text(EX, 402, text="断点和中间数据会保存在这里；重启后默认使用上次选择",
+                       fill="#888888", font=("Helvetica", 9), anchor="w")
+
         # 底部提示
-        fc.create_text(280, 378,
-                       text="修改后点击「开始运行」，配置仅本次生效，不写回 config.py",
+        fc.create_text(310, 438,
+                       text="开始运行后会保存本次输入；小区坐标来自贝壳，目标坐标请尽量使用同一坐标体系",
                        fill="#888888", font=("Helvetica", 9))
 
         # 开始按钮（嵌入 Canvas，形状和文字始终可见）
@@ -118,7 +144,7 @@ class ScraperGUI:
             font=("Helvetica", 12, "bold"),
             relief=tk.FLAT, padx=14, pady=7,
         )
-        fc.create_window(280, 415, window=start_btn)
+        fc.create_window(310, 480, window=start_btn)
 
     def _on_start(self):
         # 验证并写入 config（仅内存）
@@ -142,6 +168,12 @@ class ScraperGUI:
         if not config.SEARCH_DISTRICTS:
             messagebox.showerror("输入错误", "至少需要输入一个行政区")
             return
+
+        self._data_dir = self._var_data_dir.get().strip()
+        if not self._data_dir:
+            messagebox.showerror("输入错误", "数据保存文件夹不能为空")
+            return
+
         limit_raw = self._var_limit.get().strip()
         if limit_raw:
             try:
@@ -154,6 +186,10 @@ class ScraperGUI:
                 return
         else:
             self._max_communities = None
+
+        runtime_state.save_state(
+            runtime_state.state_from_config(config, self._data_dir, self._max_communities)
+        )
 
         # 切换到主运行窗口
         for w in self.root.winfo_children():
@@ -176,6 +212,14 @@ class ScraperGUI:
         config.BASE_URL = f"https://{city_code}.ke.com"
         self._fetch_btn.config(state=tk.DISABLED, text="获取中…")
         threading.Thread(target=self._fetch_districts_thread, daemon=True).start()
+
+    def _on_select_data_dir(self):
+        selected = filedialog.askdirectory(
+            title="选择数据保存文件夹",
+            initialdir=self._var_data_dir.get() or runtime_state.DEFAULT_DATA_DIR,
+        )
+        if selected:
+            self._var_data_dir.set(selected)
 
     def _fetch_districts_thread(self):
         from scraper import get_district_links
@@ -516,6 +560,7 @@ class ScraperGUI:
                 ask_checkpoint_fn=self.ask_checkpoint,
                 verify_fn=self.ask_verify,
                 max_communities=self._max_communities,
+                data_dir=self._data_dir,
             )
             self._log_queue.put(("done",))
         except SystemExit:

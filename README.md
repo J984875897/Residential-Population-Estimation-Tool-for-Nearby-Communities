@@ -85,6 +85,10 @@ Then edit `config.py`:
 - `OCCUPANCY_RATE`：入住率修正系数。  
   Occupancy-rate adjustment factor.
 
+GUI 和 CLI 会把上次输入保存到本地 `last_run_config.json`，下次启动时自动带出；这个文件不会替代 `config.py`，只是作为本机运行记录使用。
+
+The GUI and CLI save the last inputs to local `last_run_config.json` and load them on the next run. This file does not replace `config.py`; it is only local runtime state.
+
 ## 六、运行方式 / Usage
 
 图形界面模式：
@@ -162,6 +166,10 @@ Where:
 
 The distance between each community and the target location is calculated using the Haversine formula. The program filters communities according to the configured radius and keeps the full calculation results in the Excel output.
 
+坐标说明：小区坐标来自贝壳页面字段，目标坐标由用户提供。程序不判断坐标系，也不做百度 / 高德 / WGS84 / GCJ-02 等坐标转换；建议目标坐标尽量与贝壳坐标保持同一体系，尤其是 1km 这类较小半径的边界判断。
+
+Coordinate note: community coordinates are extracted from Beike page fields, while the target coordinate is user-provided. The program does not detect or convert between coordinate systems such as Baidu, Amap, WGS84, or GCJ-02. Use a target coordinate that is as consistent with Beike's coordinates as possible, especially for small-radius boundary decisions such as 1 km.
+
 ## 九、流程说明 / Workflow
 
 程序主流程分为三个阶段：
@@ -179,9 +187,9 @@ Step 3：计算距离和估算人口，生成 Excel 汇总结果
         Calculate distances, estimate population, and generate the Excel summary
 ```
 
-断点文件会保存在 `checkpoints/` 目录中。如果前两步已经完成，可以直接重新执行 Step 3，用于快速测试不同半径或估算参数下的结果变化。
+断点文件默认保存在 `checkpoints/` 目录中，也可以在 GUI 或 CLI 启动时选择其他数据保存文件夹。程序只检查当前选择文件夹里的 `step1_urls.json` 和 `step2_details.json`；如果有断点，会提示继续或重跑，如果没有断点，会提示并从 Step 1 开始。
 
-Checkpoint files are stored in the `checkpoints/` directory. If Step 1 and Step 2 have already been completed, Step 3 can be rerun directly to quickly test different radii or estimation parameters.
+Checkpoint files are stored in `checkpoints/` by default, and another data folder can be selected in the GUI or CLI. The program only checks `step1_urls.json` and `step2_details.json` in the selected folder. If checkpoints exist, it offers resume/restart choices; otherwise it starts from Step 1.
 
 ## 十、使用说明 / Notes
 

@@ -18,6 +18,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.comments import Comment
 
 import config
+import runtime_state
 from scraper import (
     close_driver,
     get_community_urls,
@@ -40,13 +41,37 @@ STEP2_FILE = CHECKPOINT_DIR / "step2_details.json"
 # 工具函数
 # ──────────────────────────────────────────
 
+def set_checkpoint_dir(path) -> None:
+    global CHECKPOINT_DIR, STEP1_FILE, STEP2_FILE
+    CHECKPOINT_DIR = Path(path).expanduser()
+    STEP1_FILE = CHECKPOINT_DIR / "step1_urls.json"
+    STEP2_FILE = CHECKPOINT_DIR / "step2_details.json"
+
+
+def get_checkpoint_dir() -> Path:
+    return CHECKPOINT_DIR
+
+
+def get_checkpoint_files() -> tuple[Path, Path]:
+    return STEP1_FILE, STEP2_FILE
+
+
 def _save_json(path: Path, data):
-    CHECKPOINT_DIR.mkdir(exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _prompt_cli_data_dir(log_fn=print) -> str:
+    default_dir = runtime_state.get_saved_data_dir(str(CHECKPOINT_DIR))
+    print(f"请输入数据保存文件夹 [直接回车使用 {default_dir}]: ", end="", flush=True)
+    selected = input().strip() or default_dir
+    set_checkpoint_dir(selected)
+    log_fn(f"数据保存文件夹: {get_checkpoint_dir()}")
+    return str(get_checkpoint_dir())
 
 
 def _ask_continue(next_step_desc: str, preview_lines: list = None,
@@ -314,7 +339,8 @@ def _write_excel(rows: list, total_p: int, output_file: str) -> None:
 # 入口
 # ──────────────────────────────────────────
 
-def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verify_fn=None, max_communities=None):
+def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None,
+               verify_fn=None, max_communities=None, data_dir=None):
     """
     爬虫主流程。
     GUI 模式：log_fn / ask_continue_fn / ask_checkpoint_fn / verify_fn 由 ScraperGUI 注入。
@@ -322,6 +348,20 @@ def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verif
     """
     _set_scraper_callbacks(log_fn=log_fn, verify_fn=verify_fn)
     args = sys.argv[1:]
+
+    saved_state = runtime_state.load_state()
+    if saved_state:
+        runtime_state.apply_state_to_config(config, saved_state)
+
+    if data_dir is not None:
+        set_checkpoint_dir(data_dir)
+    elif "--test" not in args:
+        data_dir = _prompt_cli_data_dir(log_fn=log_fn)
+
+    if "--test" not in args:
+        runtime_state.save_state(
+            runtime_state.state_from_config(config, str(get_checkpoint_dir()), max_communities)
+        )
 
     # ── 测试模式 ──
     if "--test" in args:
@@ -344,7 +384,7 @@ def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verif
 
     # ── 重置断点 ──
     if "--reset" in args:
-        for f in [STEP1_FILE, STEP2_FILE]:
+        for f in get_checkpoint_files():
             if f.exists():
                 f.unlink()
                 log_fn(f"已删除断点文件: {f}")
@@ -356,13 +396,14 @@ def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verif
     log_fn(f"目标地点: {config.TARGET_NAME}")
     log_fn(f"搜索半径: {config.RADIUS_KM} km")
     log_fn(f"目标坐标: ({config.TARGET_LNG}, {config.TARGET_LAT})")
-    log_fn("（如坐标未修改，请先编辑 config.py 填入实际坐标）\n")
+    log_fn(f"数据保存文件夹: {get_checkpoint_dir()}")
+    log_fn("坐标说明：小区坐标来自贝壳页面，程序直接用 Haversine 计算距离；目标坐标请尽量与贝壳坐标保持同一坐标体系。\n")
 
     # ── 断点检测 ──
     has_checkpoint = STEP1_FILE.exists() or STEP2_FILE.exists()
     step3_only = False
     if has_checkpoint:
-        existing = [f.name for f in [STEP1_FILE, STEP2_FILE] if f.exists()]
+        existing = [f.name for f in get_checkpoint_files() if f.exists()]
 
         if ask_checkpoint_fn is not None:
             # GUI 模式：弹窗选择
@@ -397,7 +438,7 @@ def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verif
         if choice == "c":
             pass
         elif choice in ("1", "r"):
-            for f in [STEP1_FILE, STEP2_FILE]:
+            for f in get_checkpoint_files():
                 if f.exists():
                     f.unlink()
             log_fn("已清除所有断点，从 Step 1 开始。\n")
@@ -413,6 +454,8 @@ def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verif
                 step3_only = True
         elif choice == "q":
             sys.exit(0)
+    else:
+        log_fn("当前数据文件夹没有断点文件，将从 Step 1 开始。\n")
 
     if step3_only:
         data = _load_json(STEP2_FILE)
@@ -431,7 +474,8 @@ def _main_impl(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verif
     run_step3(communities, log_fn=log_fn)
 
 
-def main(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verify_fn=None, max_communities=None):
+def main(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None,
+         verify_fn=None, max_communities=None, data_dir=None):
     try:
         return _main_impl(
             log_fn=log_fn,
@@ -439,6 +483,7 @@ def main(log_fn=print, ask_continue_fn=None, ask_checkpoint_fn=None, verify_fn=N
             ask_checkpoint_fn=ask_checkpoint_fn,
             verify_fn=verify_fn,
             max_communities=max_communities,
+            data_dir=data_dir,
         )
     finally:
         close_driver()
