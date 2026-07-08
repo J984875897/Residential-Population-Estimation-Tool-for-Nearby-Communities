@@ -368,6 +368,23 @@ def _extract_building_info(soup: BeautifulSoup) -> dict:
     return result
 
 
+def _extract_reference_price(soup: BeautifulSoup) -> Optional[int]:
+    """提取小区参考均价，单位：元/㎡。缺失或暂无数据时返回 None。"""
+    page_text = soup.get_text(" ", strip=True)
+
+    patterns = [
+        r"参考均价[^\d]{0,30}([\d,]+)\s*元\s*/?\s*(?:㎡|平|m²|m2)",
+        r"均价[^\d]{0,30}([\d,]+)\s*元\s*/?\s*(?:㎡|平|m²|m2)",
+        r"([\d,]+)\s*元\s*/?\s*(?:㎡|平|m²|m2)[^\n]{0,30}参考均价",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, page_text, re.IGNORECASE)
+        if m:
+            return int(m.group(1).replace(",", ""))
+
+    return None
+
+
 def _extract_room_distribution(soup: BeautifulSoup) -> dict:
     """
     提取户型分布 {卧室数(int): 套数(int)}
@@ -412,6 +429,7 @@ def get_community_detail(url: str) -> Optional[dict]:
         lat        : float,
         N          : int | None,
         a          : int | None,
+        reference_price: int | None,  # 参考均价，元/㎡
         room_dist  : dict,   # {卧室数: 套数}，可能为空
     }
     坐标缺失时返回 None（无法计算距离）
@@ -434,6 +452,7 @@ def get_community_detail(url: str) -> Optional[dict]:
     lng, lat = coords
 
     building_info = _extract_building_info(soup)
+    reference_price = _extract_reference_price(soup)
     room_dist = _extract_room_distribution(soup)
 
     return {
@@ -443,5 +462,6 @@ def get_community_detail(url: str) -> Optional[dict]:
         "lat": lat,
         "N": building_info["N"],
         "a": building_info["a"],
+        "reference_price": reference_price,
         "room_dist": room_dist,
     }

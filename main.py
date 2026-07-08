@@ -188,7 +188,8 @@ def run_step2(urls: list, log_fn=print, ask_fn=None, max_communities=None) -> li
             log_fn(f"  [{i:>4}/{total}] 跳过（数据获取失败）")
             continue
         all_communities.append(detail)
-        log_fn(f"  [{i:>4}/{total}] {detail['name']}  N={detail['N']}  a={detail['a']}")
+        price_text = detail.get("reference_price") or "无"
+        log_fn(f"  [{i:>4}/{total}] {detail['name']}  N={detail['N']}  a={detail['a']}  均价={price_text}")
 
     _save_json(STEP2_FILE, {"communities": all_communities})
 
@@ -247,6 +248,7 @@ def run_step3(communities: list, log_fn=print) -> None:
             "b": b,
             "b_note": b_note,
             "P": P,
+            "reference_price": c.get("reference_price"),
             "url": c["url"],
         })
 
@@ -263,7 +265,7 @@ def _write_excel(rows: list, total_p: int, output_file: str) -> None:
     ws = wb.active
     ws.title = f"{config.CITY_NAME}人口估算"[:31]
 
-    headers = ["小区名称", "距离(km)", f"≤{config.RADIUS_KM}km", "楼栋数N", "总户数a", "平均室数b", "估算人口P", "贝壳链接"]
+    headers = ["小区名称", "距离(km)", f"≤{config.RADIUS_KM}km", "楼栋数N", "总户数a", "平均室数b", "估算人口P", "参考均价(元/㎡)", "贝壳链接"]
     hdr_font = Font(bold=True, color="FFFFFF")
     hdr_fill = PatternFill(start_color="2B579A", end_color="2B579A", fill_type="solid")
     hdr_align = Alignment(horizontal="center", vertical="center")
@@ -302,7 +304,9 @@ def _write_excel(rows: list, total_p: int, output_file: str) -> None:
 
         _cell(7, r["P"])
 
-        link_cell = ws.cell(row=row_idx, column=8, value=r["url"])
+        _cell(8, r.get("reference_price"))
+
+        link_cell = ws.cell(row=row_idx, column=9, value=r["url"])
         link_cell.hyperlink = r["url"]
         if in_range:
             link_cell.font = Font(color="0563C1", underline="single")
@@ -320,14 +324,14 @@ def _write_excel(rows: list, total_p: int, output_file: str) -> None:
     in_range_count = sum(1 for r in rows if r["in_range"])
     ws.cell(row=total_row, column=3, value=f"{in_range_count} 个").fill = summary_fill
 
-    for col in range(2, 8):
+    for col in range(2, 9):
         ws.cell(row=total_row, column=col).fill = summary_fill
 
     p_total_cell = ws.cell(row=total_row, column=7, value=total_p)
     p_total_cell.font = Font(bold=True)
     p_total_cell.fill = summary_fill
 
-    col_widths = {"A": 28, "B": 10, "C": 10, "D": 10, "E": 10, "F": 12, "G": 12, "H": 55}
+    col_widths = {"A": 28, "B": 10, "C": 10, "D": 10, "E": 10, "F": 12, "G": 12, "H": 16, "I": 55}
     for col, w in col_widths.items():
         ws.column_dimensions[col].width = w
 

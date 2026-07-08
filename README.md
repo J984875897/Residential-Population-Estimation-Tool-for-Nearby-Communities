@@ -20,8 +20,8 @@ This project is a Python-based tool for estimating the residential population ar
   Supports checkpoint-based resume after interruptions.
 - 支持单独重算结果，便于修改半径、坐标或估算参数后快速生成新表。  
   Allows recalculation without re-crawling when radius, coordinates, or model parameters change.
-- 支持导出 Excel，包含小区名称、距离、户数、平均室数、估算人口和数据来源链接。  
-  Exports results to Excel, including community name, distance, household count, average room count, estimated population, and source link.
+- 支持导出 Excel，包含小区名称、距离、户数、平均室数、估算人口、参考均价和数据来源链接。  
+  Exports results to Excel, including community name, distance, household count, average room count, estimated population, reference price, and source link.
 
 ## 三、项目结构 / Project Structure
 
@@ -133,9 +133,9 @@ The program generates an Excel file with the following naming format:
 目标地点_人口估算结果.xlsx
 ```
 
-输出表包含小区名称、距离、是否在搜索半径内、楼栋数、总户数、平均室数、估算人口和贝壳链接。范围外的小区会在表格中保留并灰显，便于核查筛选边界。
+输出表包含小区名称、距离、是否在搜索半径内、楼栋数、总户数、平均室数、估算人口、参考均价和贝壳链接。范围外的小区会在表格中保留并灰显，便于核查筛选边界。
 
-The output table includes community name, distance, whether it is within the configured radius, building count, household count, average room count, estimated population, and Beike source link. Communities outside the radius are retained and greyed out for boundary review.
+The output table includes community name, distance, whether it is within the configured radius, building count, household count, average room count, estimated population, reference price, and Beike source link. Communities outside the radius are retained and greyed out for boundary review.
 
 ## 八、估算方法 / Estimation Method
 
